@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenhtml"
+version = "0.1.0"
+description = "Typed HTML builder with generated tag helpers."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Kitagawa" }]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/kitagawa/H"
+
+[tool.black]
+line-length = 110
+
+[tool.isort]
+profile = "black"
+
+[tool.djlint]
+indent = 2
+max_blank_lines = 10
+max_line_length = 120
+max_attribute_length = 120
+ignore = "H023,H021"
+blank_line_after_tag = [
+  "load",
+  "extends",
+  "include",
+  "macro",
+  "endblock"
+]
+format_css = true
+format_js = true
+
+[tool.djlint.css]
+indent_size = 2
+
+[tool.djlint.js]
+indent_size = 2
