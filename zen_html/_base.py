@@ -5,9 +5,9 @@ import html
 import logging
 import re
 from datetime import date, datetime, time
-from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar
+from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar, TypedDict
 
-from ._tag_spec import TAG_SPEC
+from ._tag_spec import normalized_tag_spec
 
 VOID_TAGS: set[str] = {
     "area",
@@ -30,6 +30,7 @@ PROP_NAME_MAP: dict[str, str] = {
     "for_": "for",
     "class_": "class",
     "async_": "async",
+    "as_": "as",
 }
 R_PROP_NAME_MAP = {v: k for k, v in PROP_NAME_MAP.items()}
 
@@ -51,7 +52,31 @@ TO_KEBAB1 = re.compile(r"([A-Z]+)([A-Z][a-z])")
 TO_KEBAB2 = re.compile(r"([a-z0-9])([A-Z])")
 TO_COL = re.compile(r"(?<=\w)__|__(?=\w)")
 
-_TAG_RULES: dict[str, dict[str, object]] = {entry["tag"]: entry for entry in TAG_SPEC}
+class _TagRule(TypedDict):
+    bools: set[str]
+    choices: dict[str, list[str]]
+    required: set[str]
+
+
+def _build_tag_rules() -> dict[str, _TagRule]:
+    rules: dict[str, _TagRule] = {}
+    for tag, props in normalized_tag_spec().items():
+        bools = {name for name, opt in props if opt.get("kind") == "bool"}
+        choices = {
+            name: opt["values"]
+            for name, opt in props
+            if opt.get("kind") == "choices"
+        }
+        required = {name for name, opt in props if opt.get("required")}
+        rules[tag] = {
+            "bools": bools,
+            "choices": choices,
+            "required": required,
+        }
+    return rules
+
+
+_TAG_RULES: dict[str, _TagRule] = _build_tag_rules()
 
 
 class _HBase:
@@ -105,20 +130,19 @@ class _HBase:
             return props
 
         checked = dict(props)
+        provided: set[str] = set()
         if self._tag in VOID_TAGS and self._children:
             exc = ValueError(f"Void element <{self._tag}> cannot have children")
             if self._handle_violation(exc):
                 self._children = ()
 
-        restricted_literal = spec.get("restricted_literal")
-        if isinstance(restricted_literal, dict):
-            for pk, pv in list(checked.items()):
-                if pv is None:
-                    continue
-                html_name = _to_html_prop_name(pk)
-                allowed = restricted_literal.get(html_name)
-                if allowed is None:
-                    continue
+        for pk, pv in list(checked.items()):
+            if pv is None:
+                continue
+            html_name = _to_html_prop_name(pk)
+            provided.add(html_name)
+            allowed = spec["choices"].get(html_name)
+            if allowed:
                 if not isinstance(pv, str):
                     exc = TypeError(
                         f"Attribute '{html_name}' on <{self._tag}> must be str"
@@ -132,20 +156,19 @@ class _HBase:
                     )
                     if self._handle_violation(exc):
                         checked.pop(pk, None)
+            if html_name in spec["bools"] and not isinstance(pv, bool):
+                exc = TypeError(
+                    f"Attribute '{html_name}' on <{self._tag}> must be bool"
+                )
+                if self._handle_violation(exc):
+                    checked.pop(pk, None)
 
-        restricted_bool = spec.get("restricted_bool")
-        if isinstance(restricted_bool, list):
-            bool_names = set(restricted_bool)
-            for pk, pv in list(checked.items()):
-                if pv is None:
-                    continue
-                html_name = _to_html_prop_name(pk)
-                if html_name in bool_names and not isinstance(pv, bool):
-                    exc = TypeError(
-                        f"Attribute '{html_name}' on <{self._tag}> must be bool"
-                    )
-                    if self._handle_violation(exc):
-                        checked.pop(pk, None)
+        missing = spec["required"] - provided
+        if missing:
+            exc = ValueError(
+                f"<{self._tag}> missing required attributes: {', '.join(sorted(missing))}"
+            )
+            self._handle_violation(exc)
 
         return checked
 
@@ -306,6 +329,7 @@ def _to_html_prop_name(name: str) -> str:
     s = TO_KEBAB1.sub(r"\1-\2", name)
     s = TO_KEBAB2.sub(r"\1-\2", s)
     s = TO_COL.sub(":", s)
+    s = s.replace("_", "-")
 
     return s.lower()
 

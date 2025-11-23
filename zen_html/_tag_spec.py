@@ -1,221 +1,505 @@
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
 
-TAG_SPEC: list[dict[str, object]] = [
+from __future__ import annotations
+
+from typing import Literal, TypedDict
+
+
+PropDeclaration = str | dict[str, "PropOptions"]
+
+
+class PropOptions(TypedDict, total=False):
+    kind: Literal["str", "bool", "choices"]
+    values: list[str]
+    required: bool
+
+
+class TagConfig(TypedDict, total=False):
+    props: list[PropDeclaration]
+
+
+COMMON_PROPS: tuple[PropDeclaration, ...] = ("class", "id", "name")
+
+
+def _normalize_prop(prop: PropDeclaration) -> tuple[str, PropOptions]:
+    if isinstance(prop, str):
+        return prop, {}
+    if not isinstance(prop, dict) or len(prop) != 1:
+        raise ValueError(f"Invalid prop declaration: {prop!r}")
+    (name, options), = prop.items()
+    return name, dict(options or {})
+
+
+def _normalize_props(config: TagConfig | None) -> list[tuple[str, PropOptions]]:
+    raw = (config or {}).get("props")
+    if raw is None:
+        props: list[PropDeclaration] = list(COMMON_PROPS)
+    else:
+        props = list(raw)
+    return [_normalize_prop(prop) for prop in props]
+
+
+def normalized_tag_spec(
+    spec: dict[str, TagConfig] | None = None,
+) -> dict[str, list[tuple[str, PropOptions]]]:
+    base = spec or TAG_SPEC
+    return {tag: _normalize_props(config) for tag, config in base.items()}
+
+
+TAG_SPEC: dict[str, TagConfig] = {
     # ===================== Metadata =====================
-    {"tag": "html"},
-    {"tag": "head"},
-    {"tag": "title"},
-    {"tag": "base"},
-    {"tag": "meta"},
-    {"tag": "style"},
-    {"tag": "body"},
-    # ===================== Sectioning =====================
-    {"tag": "article"},
-    {"tag": "section"},
-    {"tag": "nav"},
-    {"tag": "aside"},
-    {"tag": "h1"},
-    {"tag": "h2"},
-    {"tag": "h3"},
-    {"tag": "h4"},
-    {"tag": "h5"},
-    {"tag": "h6"},
-    {"tag": "header"},
-    {"tag": "footer"},
-    {"tag": "address"},
-    # ===================== Grouping =====================
-    {"tag": "p"},
-    {"tag": "hr"},
-    {"tag": "pre"},
-    {"tag": "blockquote"},
-    {"tag": "ol", "restricted_bool": ["reversed"]},
-    {"tag": "ul"},
-    {"tag": "menu"},
-    {"tag": "li"},
-    {"tag": "dl"},
-    {"tag": "dt"},
-    {"tag": "dd"},
-    {"tag": "figure"},
-    {"tag": "figcaption"},
-    {"tag": "main"},
-    {"tag": "div"},
-    # ===================== Text-level =====================
-    {"tag": "em"},
-    {"tag": "strong"},
-    {"tag": "small"},
-    {"tag": "s"},
-    {"tag": "cite"},
-    {"tag": "q"},
-    {"tag": "dfn"},
-    {"tag": "abbr"},
-    {"tag": "ruby"},
-    {"tag": "rt"},
-    {"tag": "rp"},
-    {"tag": "data"},
-    {"tag": "time"},
-    {"tag": "code"},
-    {"tag": "var"},
-    {"tag": "samp"},
-    {"tag": "kbd"},
-    {"tag": "sub"},
-    {"tag": "sup"},
-    {"tag": "i"},
-    {"tag": "b"},
-    {"tag": "u"},
-    {"tag": "mark"},
-    {"tag": "bdi"},
-    {"tag": "bdo"},
-    {"tag": "span"},
-    {"tag": "br"},
-    {"tag": "wbr"},
-    # ===================== Edits =====================
-    {"tag": "ins"},
-    {"tag": "del"},
-    # ===================== Embedded content =====================
-    {"tag": "picture"},
-    {"tag": "source"},
-    {
-        "tag": "img",
-        "restricted_literal": {
-            "loading": ["lazy", "eager"],
-            "decoding": ["sync", "async", "auto"],
-            "fetchpriority": ["high", "low", "auto"],
-        },
-        "restricted_bool": ["ismap"],
-    },
-    {"tag": "iframe"},
-    {"tag": "embed"},
-    {"tag": "object"},
-    {"tag": "param"},
-    {
-        "tag": "video",
-        "restricted_bool": ["autoplay", "controls", "loop", "muted"],
-    },
-    {
-        "tag": "audio",
-        "restricted_bool": ["autoplay", "controls", "loop", "muted"],
-    },
-    {"tag": "track", "restricted_bool": ["default"]},
-    {"tag": "map"},
-    {"tag": "area"},
-    # ===================== Tables =====================
-    {"tag": "table"},
-    {"tag": "caption"},
-    {"tag": "colgroup"},
-    {"tag": "col"},
-    {"tag": "thead"},
-    {"tag": "tbody"},
-    {"tag": "tfoot"},
-    {"tag": "tr"},
-    {"tag": "th"},
-    {"tag": "td"},
-    # ===================== Forms =====================
-    {
-        "tag": "form",
-        "restricted_literal": {
-            "method": ["get", "post"],
-            "enctype": [
-                "application/x-www-form-urlencoded",
-                "multipart/form-data",
-                "text/plain",
-            ],
-        },
-        "restricted_bool": ["novalidate"],
-    },
-    {"tag": "label"},
-    {
-        "tag": "select",
-        "restricted_bool": ["autofocus", "disabled", "multiple", "required"],
-    },
-    {"tag": "datalist"},
-    {"tag": "optgroup", "restricted_bool": ["disabled"]},
-    {
-        "tag": "option",
-        "restricted_bool": ["disabled", "selected"],
-    },
-    {
-        "tag": "textarea",
-        "restricted_bool": ["autofocus", "disabled", "readonly", "required"],
-    },
-    {"tag": "output"},
-    {"tag": "progress"},
-    {"tag": "meter"},
-    {"tag": "fieldset", "restricted_bool": ["disabled"]},
-    {"tag": "legend"},
-    {
-        "tag": "input",
-        "restricted_literal": {
-            "type": [
-                "text",
-                "password",
-                "number",
-                "email",
-                "checkbox",
-                "radio",
-                "date",
-                "datetime-local",
-                "file",
-                "hidden",
-                "image",
-                "month",
-                "range",
-                "reset",
-                "search",
-                "submit",
-                "tel",
-                "time",
-                "url",
-                "week",
-                "color",
-            ],
-        },
-        "restricted_bool": [
-            "disabled",
-            "required",
-            "checked",
-            "multiple",
-            "readonly",
-            "autofocus",
+    "html": {
+        "props": [
+            *COMMON_PROPS,
+            "lang",
         ],
     },
-    {
-        "tag": "button",
-        "restricted_literal": {"type": ["button", "submit", "reset"]},
-        "restricted_bool": ["disabled", "formnovalidate"],
+    "head": {},
+    "title": {},
+    "base": {
+        "props": [
+            "href",
+            "target",
+        ],
     },
-    {
-        "tag": "a",
-        "restricted_literal": {
-            "target": ["_self", "_blank", "_parent", "_top"],
-        },
+    "meta": {
+        "props": [
+            "charset",
+            "http-equiv",
+            "name",
+            "content",
+        ],
+    },
+    "style": {
+        "props": [
+            *COMMON_PROPS,
+            "media",
+        ],
+    },
+    "body": {},
+    # ===================== Sectioning =====================
+    "article": {},
+    "section": {},
+    "nav": {},
+    "aside": {},
+    "h1": {},
+    "h2": {},
+    "h3": {},
+    "h4": {},
+    "h5": {},
+    "h6": {},
+    "header": {},
+    "footer": {},
+    "address": {},
+    # ===================== Grouping =====================
+    "p": {},
+    "hr": {},
+    "pre": {},
+    "blockquote": {
+        "props": [
+            *COMMON_PROPS,
+            "cite",
+        ],
+    },
+    "ol": {
+        "props": [
+            *COMMON_PROPS,
+            {"reversed": {"kind": "bool"}},
+        ],
+    },
+    "ul": {},
+    "menu": {},
+    "li": {},
+    "dl": {},
+    "dt": {},
+    "dd": {},
+    "figure": {},
+    "figcaption": {},
+    "main": {},
+    "div": {},
+    # ===================== Text-level =====================
+    "em": {},
+    "strong": {},
+    "small": {},
+    "s": {},
+    "cite": {
+        "props": [
+            *COMMON_PROPS,
+            "cite",
+        ],
+    },
+    "q": {
+        "props": [
+            *COMMON_PROPS,
+            "cite",
+        ],
+    },
+    "dfn": {},
+    "abbr": {},
+    "ruby": {},
+    "rt": {},
+    "rp": {},
+    "data": {
+        "props": [
+            *COMMON_PROPS,
+            "value",
+        ],
+    },
+    "time": {
+        "props": [
+            *COMMON_PROPS,
+            "datetime",
+        ],
+    },
+    "code": {},
+    "var": {},
+    "samp": {},
+    "kbd": {},
+    "sub": {},
+    "sup": {},
+    "i": {},
+    "b": {},
+    "u": {},
+    "mark": {},
+    "bdi": {},
+    "bdo": {},
+    "span": {},
+    "br": {
+        "props": [],
+    },
+    "wbr": {
+        "props": [],
+    },
+    # ===================== Edits =====================
+    "ins": {
+        "props": [
+            *COMMON_PROPS,
+            "cite",
+            "datetime",
+        ],
+    },
+    "del": {
+        "props": [
+            *COMMON_PROPS,
+            "cite",
+            "datetime",
+        ],
+    },
+    # ===================== Embedded content =====================
+    "picture": {},
+    "source": {
+        "props": [
+            *COMMON_PROPS,
+            "src",
+            "type",
+            "media",
+            "sizes",
+            "srcset",
+        ],
+    },
+    "img": {
+        "props": [
+            *COMMON_PROPS,
+            {"src": {"required": True}},
+            "alt",
+            {"loading": {"kind": "choices", "values": ["lazy", "eager"]}},
+            {"decoding": {"kind": "choices", "values": ["sync", "async", "auto"]}},
+            {"fetchpriority": {"kind": "choices", "values": ["high", "low", "auto"]}},
+            {"ismap": {"kind": "bool"}},
+        ],
+    },
+    "iframe": {
+        "props": [
+            *COMMON_PROPS,
+            "src",
+            "title",
+        ],
+    },
+    "embed": {
+        "props": [
+            *COMMON_PROPS,
+            "src",
+            "type",
+        ],
+    },
+    "object": {
+        "props": [
+            *COMMON_PROPS,
+            "data",
+            "type",
+        ],
+    },
+    "param": {
+        "props": [
+            "name",
+            "value",
+        ],
+    },
+    "video": {
+        "props": [
+            *COMMON_PROPS,
+            {"src": {"required": True}},
+            "poster",
+            {"autoplay": {"kind": "bool"}},
+            {"controls": {"kind": "bool"}},
+            {"loop": {"kind": "bool"}},
+            {"muted": {"kind": "bool"}},
+        ],
+    },
+    "audio": {
+        "props": [
+            *COMMON_PROPS,
+            {"src": {"required": True}},
+            {"autoplay": {"kind": "bool"}},
+            {"controls": {"kind": "bool"}},
+            {"loop": {"kind": "bool"}},
+            {"muted": {"kind": "bool"}},
+        ],
+    },
+    "track": {
+        "props": [
+            "src",
+            {"kind": {"kind": "choices", "values": ["subtitles", "captions", "descriptions", "chapters", "metadata"], "required": True}},
+            "srclang",
+            "label",
+            {"default": {"kind": "bool"}},
+        ],
+    },
+    "map": {},
+    "area": {
+        "props": [
+            "alt",
+            "coords",
+            "shape",
+            "href",
+        ],
+    },
+    # ===================== Tables =====================
+    "table": {},
+    "caption": {},
+    "colgroup": {},
+    "col": {},
+    "thead": {},
+    "tbody": {},
+    "tfoot": {},
+    "tr": {},
+    "th": {},
+    "td": {},
+    # ===================== Forms =====================
+    "form": {
+        "props": [
+            *COMMON_PROPS,
+            "action",
+            {"method": {"kind": "choices", "values": ["get", "post"]}},
+            {
+                "enctype": {
+                    "kind": "choices", "values": [
+                        "application/x-www-form-urlencoded",
+                        "multipart/form-data",
+                        "text/plain",
+                    ]
+                }
+            },
+            "target",
+            {"novalidate": {"kind": "bool"}},
+        ],
+    },
+    "label": {
+        "props": [
+            *COMMON_PROPS,
+            "for",
+        ],
+    },
+    "select": {
+        "props": [
+            *COMMON_PROPS,
+            "form",
+            {"autofocus": {"kind": "bool"}},
+            {"disabled": {"kind": "bool"}},
+            {"multiple": {"kind": "bool"}},
+            {"required": {"kind": "bool"}},
+        ],
+    },
+    "datalist": {},
+    "optgroup": {
+        "props": [
+            *COMMON_PROPS,
+            "label",
+            {"disabled": {"kind": "bool"}},
+        ],
+    },
+    "option": {
+        "props": [
+            *COMMON_PROPS,
+            "label",
+            "value",
+            {"disabled": {"kind": "bool"}},
+            {"selected": {"kind": "bool"}},
+        ],
+    },
+    "textarea": {
+        "props": [
+            *COMMON_PROPS,
+            "rows",
+            "cols",
+            {"autofocus": {"kind": "bool"}},
+            {"disabled": {"kind": "bool"}},
+            {"readonly": {"kind": "bool"}},
+            {"required": {"kind": "bool"}},
+        ],
+    },
+    "output": {
+        "props": [
+            *COMMON_PROPS,
+            "for",
+        ],
+    },
+    "progress": {
+        "props": [
+            *COMMON_PROPS,
+            "value",
+            "max",
+        ],
+    },
+    "meter": {
+        "props": [
+            *COMMON_PROPS,
+            "value",
+            "min",
+            "max",
+        ],
+    },
+    "fieldset": {
+        "props": [
+            *COMMON_PROPS,
+            {"disabled": {"kind": "bool"}},
+        ],
+    },
+    "legend": {},
+    "input": {
+        "props": [
+            *COMMON_PROPS,
+            {
+                "type": {
+                    "kind": "choices", "values": [
+                        "text",
+                        "password",
+                        "number",
+                        "email",
+                        "checkbox",
+                        "radio",
+                        "date",
+                        "datetime-local",
+                        "file",
+                        "hidden",
+                        "image",
+                        "month",
+                        "range",
+                        "reset",
+                        "search",
+                        "submit",
+                        "tel",
+                        "time",
+                        "url",
+                        "week",
+                        "color",
+                    ]
+                }
+            },
+            "value",
+            "placeholder",
+            "min",
+            "max",
+            "step",
+            "pattern",
+            "accept",
+            {
+                "autocomplete": {
+                    "kind": "choices", "values": ["off", "on"],
+                }
+            },
+            {"disabled": {"kind": "bool"}},
+            {"required": {"kind": "bool"}},
+            {"checked": {"kind": "bool"}},
+            {"multiple": {"kind": "bool"}},
+            {"readonly": {"kind": "bool"}},
+            {"autofocus": {"kind": "bool"}},
+        ],
+    },
+    "button": {
+        "props": [
+            *COMMON_PROPS,
+            "value",
+            {"type": {"kind": "choices", "values": ["button", "submit", "reset"]}},
+            {"disabled": {"kind": "bool"}},
+            {"formnovalidate": {"kind": "bool"}},
+        ],
+    },
+    "a": {
+        "props": [
+            *COMMON_PROPS,
+            "href",
+            {"target": {"kind": "choices", "values": ["_self", "_blank", "_parent", "_top"]}},
+            "rel",
+            "download",
+        ],
     },
     # ===================== Interactive =====================
-    {"tag": "details", "restricted_bool": ["open"]},
-    {"tag": "summary"},
-    {"tag": "dialog", "restricted_bool": ["open"]},
+    "details": {
+        "props": [
+            *COMMON_PROPS,
+            {"open": {"kind": "bool"}},
+        ],
+    },
+    "summary": {},
+    "dialog": {
+        "props": [
+            *COMMON_PROPS,
+            {"open": {"kind": "bool"}},
+        ],
+    },
     # ===================== Scripting =====================
-    {
-        "tag": "script",
-        "restricted_literal": {"type": ["module", "text/javascript"]},
-        "restricted_bool": ["async", "defer", "nomodule"],
+    "script": {
+        "props": [
+            *COMMON_PROPS,
+            "src",
+            {"type": {"kind": "choices", "values": ["module", "text/javascript"]}},
+            {"async": {"kind": "bool"}},
+            {"defer": {"kind": "bool"}},
+            {"nomodule": {"kind": "bool"}},
+        ],
     },
-    {"tag": "noscript"},
-    {"tag": "template"},
-    {"tag": "slot"},
-    {"tag": "canvas"},
+    "noscript": {},
+    "template": {},
+    "slot": {},
+    "canvas": {
+        "props": [
+            *COMMON_PROPS,
+            "width",
+            "height",
+        ],
+    },
     # ===================== Links =====================
-    {
-        "tag": "link",
-        "restricted_literal": {
-            "rel": [
-                "stylesheet",
-                "icon",
-                "preload",
-                "prefetch",
-                "modulepreload",
-                "manifest",
-            ],
-        },
-        "restricted_bool": ["disabled"],
+    "link": {
+        "props": [
+            {"href": {"required": True}},
+            {
+                "rel": {
+                    "kind": "choices", "values": [
+                        "stylesheet",
+                        "icon",
+                        "preload",
+                        "prefetch",
+                        "modulepreload",
+                        "manifest",
+                    ]
+                }
+            },
+            "as",
+            "type",
+            {"disabled": {"kind": "bool"}},
+            "media",
+            "sizes",
+        ],
     },
-]
+}

@@ -21,6 +21,7 @@ def test_button_renders_with_literal_and_bool_props() -> None:
 
 def test_img_literal_attributes() -> None:
     node = H.img(
+        src="/logo.png",
         alt="logo",
         decoding="async",
         loading="lazy",
@@ -67,6 +68,11 @@ def test_camel_case_to_kebab_case() -> None:
     html = node.html_
     assert "aria-label" in html
     assert "checked" in html
+
+
+def test_underscore_translates_to_dash() -> None:
+    node = H.meta(http_equiv="refresh")
+    assert "http-equiv='refresh'" in node.html_
 
 
 def test_reserved_keyword_mapping() -> None:
