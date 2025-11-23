@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zenhtml"
-version = "0.1.1"
+version = "0.1.2"
 description = "Typed HTML builder with generated tag helpers."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [{ name = "Kitagawa" }]
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/kitagawa/H"
+Homepage = "https://github.com/MeiRakuPapa/ZenHtml"
 
 [tool.black]
 line-length = 110
