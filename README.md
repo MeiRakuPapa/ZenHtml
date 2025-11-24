@@ -1,4 +1,4 @@
-![Python](https://img.shields.io/badge/Python-3.11%20|%203.12-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Dependencies](https://img.shields.io/badge/Dependencies-0-lightgrey.svg)
 ![LOC](https://img.shields.io/badge/LOC-<400-lightgreen.svg)
