@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, TypedDict
+from typing import Literal, TypedDict, cast
 
 
 PropDeclaration = str | dict[str, "PropOptions"]
@@ -26,8 +26,9 @@ def _normalize_prop(prop: PropDeclaration) -> tuple[str, PropOptions]:
         return prop, {}
     if not isinstance(prop, dict) or len(prop) != 1:
         raise ValueError(f"Invalid prop declaration: {prop!r}")
-    (name, options), = prop.items()
-    return name, dict(options or {})
+    ((name, options),) = prop.items()
+    normalized = cast(PropOptions, dict(options or {}))
+    return name, normalized
 
 
 def _normalize_props(config: TagConfig | None) -> list[tuple[str, PropOptions]]:
@@ -259,7 +260,13 @@ TAG_SPEC: dict[str, TagConfig] = {
     "track": {
         "props": [
             "src",
-            {"kind": {"kind": "choices", "values": ["subtitles", "captions", "descriptions", "chapters", "metadata"], "required": True}},
+            {
+                "kind": {
+                    "kind": "choices",
+                    "values": ["subtitles", "captions", "descriptions", "chapters", "metadata"],
+                    "required": True,
+                }
+            },
             "srclang",
             "label",
             {"default": {"kind": "bool"}},
@@ -293,11 +300,12 @@ TAG_SPEC: dict[str, TagConfig] = {
             {"method": {"kind": "choices", "values": ["get", "post"]}},
             {
                 "enctype": {
-                    "kind": "choices", "values": [
+                    "kind": "choices",
+                    "values": [
                         "application/x-www-form-urlencoded",
                         "multipart/form-data",
                         "text/plain",
-                    ]
+                    ],
                 }
             },
             "target",
@@ -381,7 +389,8 @@ TAG_SPEC: dict[str, TagConfig] = {
             *COMMON_PROPS,
             {
                 "type": {
-                    "kind": "choices", "values": [
+                    "kind": "choices",
+                    "values": [
                         "text",
                         "password",
                         "number",
@@ -403,7 +412,7 @@ TAG_SPEC: dict[str, TagConfig] = {
                         "url",
                         "week",
                         "color",
-                    ]
+                    ],
                 }
             },
             "value",
@@ -415,7 +424,8 @@ TAG_SPEC: dict[str, TagConfig] = {
             "accept",
             {
                 "autocomplete": {
-                    "kind": "choices", "values": ["off", "on"],
+                    "kind": "choices",
+                    "values": ["off", "on"],
                 }
             },
             {"disabled": {"kind": "bool"}},
@@ -485,14 +495,15 @@ TAG_SPEC: dict[str, TagConfig] = {
             {"href": {"required": True}},
             {
                 "rel": {
-                    "kind": "choices", "values": [
+                    "kind": "choices",
+                    "values": [
                         "stylesheet",
                         "icon",
                         "preload",
                         "prefetch",
                         "modulepreload",
                         "manifest",
-                    ]
+                    ],
                 }
             },
             "as",

@@ -5,7 +5,7 @@ import html
 import logging
 import re
 from datetime import date, datetime, time
-from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar, TypedDict
+from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar, TypedDict, cast
 
 from ._tag_spec import normalized_tag_spec
 
@@ -46,11 +46,13 @@ def raw(value: str) -> _RawHTML:
     return _RawHTML(value)
 
 
+ClassAttr = str | Iterable[str] | None
 PropVal = str | int | bool | float | date | datetime | time | dict[str, object] | None
 
 TO_KEBAB1 = re.compile(r"([A-Z]+)([A-Z][a-z])")
 TO_KEBAB2 = re.compile(r"([a-z0-9])([A-Z])")
 TO_COL = re.compile(r"(?<=\w)__|__(?=\w)")
+
 
 class _TagRule(TypedDict):
     bools: set[str]
@@ -62,11 +64,7 @@ def _build_tag_rules() -> dict[str, _TagRule]:
     rules: dict[str, _TagRule] = {}
     for tag, props in normalized_tag_spec().items():
         bools = {name for name, opt in props if opt.get("kind") == "bool"}
-        choices = {
-            name: opt["values"]
-            for name, opt in props
-            if opt.get("kind") == "choices"
-        }
+        choices = {name: opt["values"] for name, opt in props if opt.get("kind") == "choices"}
         required = {name for name, opt in props if opt.get("required")}
         rules[tag] = {
             "bools": bools,
@@ -83,9 +81,26 @@ class _HBase:
     strict_validation: ClassVar[bool] = True
     logger: ClassVar[logging.Logger] = logging.getLogger("H")
 
-    def __init__(self, tag: str, *children: Children, **props: PropVal):
+    def __init__(
+        self,
+        tag: str,
+        *children: Children,
+        children_kw: Children | None = None,
+        **props: PropVal,
+    ):
         self._tag = tag
-        self._children = tuple(self._flatten_children(children))
+        if children_kw is not None and children:
+            raise ValueError("Provide children either positionally or via 'children' keyword, not both")
+        if children_kw is not None:
+            flattened = self._flatten_children((children_kw,))
+        else:
+            flattened = self._flatten_children(children)
+        self._children = tuple(flattened)
+        class_value = props.get("class_")
+        if class_value is not None:
+            props["class_"] = _normalize_class_attr(class_value)
+        elif "class" in props and props["class"] is not None:
+            props["class"] = _normalize_class_attr(props["class"])
         dataset = props.pop("dataset", None)
         match dataset:
             case None:
@@ -103,9 +118,7 @@ class _HBase:
                 pass
             case dict():
                 props["style"] = "; ".join(
-                    f"{_to_html_prop_name(k)}: {v}"
-                    for k, v in style.items()
-                    if v is not None
+                    f"{_to_html_prop_name(k)}: {v}" for k, v in style.items() if v is not None
                 )
             case str():
                 props["style"] = style
@@ -132,8 +145,7 @@ class _HBase:
         checked = dict(props)
         provided: set[str] = set()
         if self._tag in VOID_TAGS and self._children:
-            exc = ValueError(f"Void element <{self._tag}> cannot have children")
-            if self._handle_violation(exc):
+            if self._handle_violation(ValueError(f"Void element <{self._tag}> cannot have children")):
                 self._children = ()
 
         for pk, pv in list(checked.items()):
@@ -144,31 +156,29 @@ class _HBase:
             allowed = spec["choices"].get(html_name)
             if allowed:
                 if not isinstance(pv, str):
-                    exc = TypeError(
-                        f"Attribute '{html_name}' on <{self._tag}> must be str"
-                    )
-                    if self._handle_violation(exc):
+                    if self._handle_violation(
+                        TypeError(f"Attribute '{html_name}' on <{self._tag}> must be str")
+                    ):
                         checked.pop(pk, None)
                     continue
                 if pv not in allowed:
-                    exc = ValueError(
-                        f"Attribute '{html_name}' on <{self._tag}> must be one of {allowed}: {pv!r}"
-                    )
-                    if self._handle_violation(exc):
+                    if self._handle_violation(
+                        ValueError(
+                            f"Attribute '{html_name}' on <{self._tag}> must be one of {allowed}: {pv!r}"
+                        )
+                    ):
                         checked.pop(pk, None)
             if html_name in spec["bools"] and not isinstance(pv, bool):
-                exc = TypeError(
-                    f"Attribute '{html_name}' on <{self._tag}> must be bool"
-                )
-                if self._handle_violation(exc):
+                if self._handle_violation(
+                    TypeError(f"Attribute '{html_name}' on <{self._tag}> must be bool")
+                ):
                     checked.pop(pk, None)
 
         missing = spec["required"] - provided
         if missing:
-            exc = ValueError(
-                f"<{self._tag}> missing required attributes: {', '.join(sorted(missing))}"
+            self._handle_violation(
+                ValueError(f"<{self._tag}> missing required attributes: {', '.join(sorted(missing))}")
             )
-            self._handle_violation(exc)
 
         return checked
 
@@ -180,9 +190,7 @@ class _HBase:
         return True
 
     @classmethod
-    def _flatten_children(
-        cls, children: Iterable[Children]
-    ) -> Iterable[Child]:
+    def _flatten_children(cls, children: Iterable[Children]) -> Iterable[Child]:
         for c in children:
             match c:
                 case _RawHTML():
@@ -225,12 +233,8 @@ class _HBase:
     def dict_(self) -> dict[str, object]:
         return {
             "tag": self._tag,
-            "children": [
-                _serialize_child(child) for child in self._children
-            ],
-            "props": {
-                k: _serialize_prop_value(v) for k, v in self._props.items()
-            },
+            "children": [_serialize_child(child) for child in self._children],
+            "props": {k: _serialize_prop_value(v) for k, v in self._props.items()},
         }
 
     def __str__(self) -> str:
@@ -299,6 +303,7 @@ class _HBase:
         lines.append(f"{pad}}}")
         return "\n".join(lines)
 
+
 Child = _HBase | str | _RawHTML
 Children = Child | Iterable[Child]
 
@@ -315,7 +320,8 @@ def html_tag(fn: Callable[_P, _S]) -> Callable[_P, _S]:
         *children: Children,
         **props: PropVal,
     ) -> _S:
-        return cls(name, *children, **props)
+        children_kw = cast(Children | None, props.pop("children", None))
+        return cls(name, *children, children_kw=children_kw, **props)
 
     wrapper.__name__ = fn.__name__
     wrapper.__qualname__ = fn.__qualname__
@@ -353,6 +359,23 @@ def _to_dataset_value(v: object) -> str:
     if value is False:
         return "false"
     return str(value)
+
+
+def _normalize_class_attr(value: object) -> str:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Iterable):
+        classes: list[str] = []
+        for item in value:
+            if item is None:
+                continue
+            if not isinstance(item, str):
+                raise TypeError("class_ iterable entries must be str")
+            token = item.strip()
+            if token:
+                classes.append(token)
+        return " ".join(classes)
+    raise TypeError("class_ must be str or iterable of str values")
 
 
 def _escape_text(value: str) -> str:

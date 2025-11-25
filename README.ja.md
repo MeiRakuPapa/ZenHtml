@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Dependencies](https://img.shields.io/badge/Dependencies-0-lightgrey.svg)
-![LOC](https://img.shields.io/badge/LOC-<400-lightgreen.svg)
+![Typing](https://img.shields.io/badge/Typing-mypy-blue.svg)
 ![Tests](https://img.shields.io/badge/Tests-Passed-brightgreen.svg)
 ![Philosophy](https://img.shields.io/badge/Philosophy-Simple%20Design-82c91e.svg)
 # H
@@ -15,11 +15,11 @@ pip install zenhtml
 ```
 
 ## 特徴
-- **フルタイピング**: 各タグは `class_`, `id`, `name` など共通属性に加え、タグ固有の Literal/boolean 属性を型で制限しています。
-- **DOM ツリー合成が簡単**: 子要素はネストした Iterable も渡せるので、`H.div(list_of_nodes)` のように配列をそのまま差し込めます。
+- **フルタイピング**: 各タグは `class_`, `id`, `name` など共通属性に加え、タグ固有の Literal/boolean 属性を型で制限しています。`class_` 自体は `str`・`Iterable[str]`・`None` を受け取れるため、クラスリストを組み立ててから渡すようなコードでも追加処理が要りません。
+- **DOM ツリー合成が簡単**: 子要素はネストした Iterable も渡せるので、`H.div(list_of_nodes)` のように配列をそのまま差し込めます。プロパティを先に書きたい場合は `children=[...]` をキーワード引数で指定すれば同じ結果になります。
 - **便利な補助機能**: `dataset` dict → `data-*` 属性、`style` dict → CSS 文字列、`pretty_html`/`pretty_dict` による整形表示などをサポートしています。
 - **生成済みトークンの再利用**: `to_token()` / `html_` / `dict_` プロパティから用途に応じたフォーマットを取得できます。
-- **HTML5 の主要タグをカバー**: `_tag_spec.py` に定義された 110+ タグ（メタデータ、フォーム、テーブル、インタラクティブ要素など）を網羅し、SVG/MathML などを除く一般的な HTML ドキュメントをほぼすべて記述できます。
+- **HTML5 の主要タグをカバー**: `_tag_spec.py` に定義された 110+ タグ（メタデータ、フォーム、テーブル、インタラクティブ要素など）を網羅し、SVG/MathML などを除く一般的な HTML ドキュメントをほぼすべて記述できます。対象を絞っているためコードベースもコンパクトに保たれています。
 - **デフォルトでエスケープ済み**: 文字列の子要素や属性値は自動的に HTML エスケープされます。どうしてもプレーン HTML を差し込みたい場合は `H.raw()` で opt-out し、`H.strict_validation` を `True` のままにしておけば void タグへの子要素や不正な Literal が即座に検出されます。
 
 ## 使い方
@@ -33,9 +33,12 @@ page: H = H.html(
         H.title("Hello, H"),
     ),
     H.body(
-        H.h1("Hello"),
-        H.p("This markup was generated in Python.", class_="lead"),
-        H.button("Click", type="button", disabled=None),
+        children=[
+            H.h1("Hello"),
+            H.p("This markup was generated in Python.", class_=["lead", "muted"]),
+            H.button("Click", type="button", disabled=None),
+        ],
+        class_="page",
     ),
     lang="ja",
 )
@@ -70,7 +73,7 @@ button("invalid")   # mypy でエラー: Literal["button","submit"] に含まれ
 import json
 from zen_html.h import H
 
-payload = json.dumps(H.div("Hi", class_="greeting").dict_)
+payload = json.dumps(H.div("Hi", class_=["greeting", "highlight"]).dict_)
 ```
 
 ```html

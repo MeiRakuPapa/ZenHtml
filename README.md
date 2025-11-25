@@ -1,7 +1,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Dependencies](https://img.shields.io/badge/Dependencies-0-lightgrey.svg)
-![LOC](https://img.shields.io/badge/LOC-<400-lightgreen.svg)
+![Typing](https://img.shields.io/badge/Typing-mypy-blue.svg)
 ![Tests](https://img.shields.io/badge/Tests-Passed-brightgreen.svg)
 ![Philosophy](https://img.shields.io/badge/Philosophy-Simple%20Design-82c91e.svg)
 
@@ -17,11 +17,11 @@ pip install zenhtml
 ```
 
 ## Features
-- **Fully typed API**: Each tag exposes common props (`class_`, `id`, `name`, …) plus Literal/boolean-restricted attributes.
-- **Simple DOM composition**: Nested iterables are accepted as children, so `H.div(list_of_nodes)` just works.
+- **Fully typed API**: Each tag exposes common props (`class_`, `id`, `name`, …) plus Literal/boolean-restricted attributes. `class_` itself accepts a `str`, any iterable of `str`, or `None`, so you can build class lists dynamically without manual joins.
+- **Simple DOM composition**: Nested iterables are accepted as children, so `H.div(list_of_nodes)` just works. Prefer keyword-argument `children=[...]` when you want to list props first—it produces the same result as positional children.
 - **Convenient helpers**: `dataset` dict → `data-*`, `style` dict → CSS strings, and `pretty_html`/`pretty_dict` for debugging.
 - **Reusable tokens**: `to_token()`, `html_`, and `dict_` can be used for streaming or structured rendering.
-- **HTML5 coverage**: 110+ tags (metadata, forms, tables, interactive elements…) are generated from `_tag_spec.py`. SVG/MathML are intentionally out of scope.
+- **HTML5 coverage**: 110+ tags (metadata, forms, tables, interactive elements…) are generated from `_tag_spec.py`. SVG/MathML are intentionally out of scope, helping keep the library compact and focused.
 - **Escaped by default**: Text children/attribute values are HTML-escaped automatically. Wrap trusted fragments with `H.raw()` when you really need unescaped output, and keep `H.strict_validation` enabled to fail fast on invalid props/void-tag children.
 
 ## Usage
@@ -35,9 +35,12 @@ page: H = H.html(
         H.title("Hello, H"),
     ),
     H.body(
-        H.h1("Hello"),
-        H.p("Generated in Python.", class_="lead"),
-        H.button("Click", type="button", disabled=None),
+        children=[
+            H.h1("Hello"),
+            H.p("Generated in Python.", class_=["lead", "muted"]),
+            H.button("Click", type="button", disabled=None),
+        ],
+        class_="page",
     ),
     lang="ja",
 )
@@ -71,7 +74,7 @@ button("invalid")   # mypy error thanks to Literal
 import json
 from zen_html.h import H
 
-payload = json.dumps(H.div("Hi", class_="greeting").dict_)
+payload = json.dumps(H.div("Hi", class_=["greeting", "highlight"]).dict_)
 ```
 
 ```html

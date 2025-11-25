@@ -83,6 +83,28 @@ def test_reserved_keyword_mapping() -> None:
     assert html.startswith("<script")
 
 
+def test_class_attribute_accepts_iterable() -> None:
+    node = H.div("text", class_=["foo", None, " bar ", "baz"])
+    html = node.html_
+    assert "class='foo bar baz'" in html
+
+
+def test_class_attribute_rejects_non_string_items() -> None:
+    with pytest.raises(TypeError):
+        H.div(class_=["foo", 1])  # type: ignore[list-item]
+
+
+def test_children_keyword_argument() -> None:
+    node = H.div(children=[H.span("inner"), "tail"], class_="wrapper")
+    html = node.html_
+    assert html == "<div class='wrapper'><span>inner</span>tail</div>"
+
+
+def test_children_keyword_conflict_with_positional() -> None:
+    with pytest.raises(ValueError):
+        H.div("text", children=["extra"])
+
+
 def test_simple_div_with_nested_content() -> None:
     node = H.div(
         "text",
