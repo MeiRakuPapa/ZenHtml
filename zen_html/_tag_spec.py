@@ -422,12 +422,7 @@ TAG_SPEC: dict[str, TagConfig] = {
             "step",
             "pattern",
             "accept",
-            {
-                "autocomplete": {
-                    "kind": "choices",
-                    "values": ["off", "on"],
-                }
-            },
+            "autocomplete",
             {"disabled": {"kind": "bool"}},
             {"required": {"kind": "bool"}},
             {"checked": {"kind": "bool"}},

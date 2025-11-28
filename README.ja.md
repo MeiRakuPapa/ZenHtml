@@ -20,7 +20,7 @@ pip install zenhtml
 - **便利な補助機能**: `dataset` dict → `data-*` 属性、`style` dict → CSS 文字列、`pretty_html`/`pretty_dict` による整形表示などをサポートしています。
 - **生成済みトークンの再利用**: `to_token()` / `html_` / `dict_` プロパティから用途に応じたフォーマットを取得できます。
 - **HTML5 の主要タグをカバー**: `_tag_spec.py` に定義された 110+ タグ（メタデータ、フォーム、テーブル、インタラクティブ要素など）を網羅し、SVG/MathML などを除く一般的な HTML ドキュメントをほぼすべて記述できます。対象を絞っているためコードベースもコンパクトに保たれています。
-- **デフォルトでエスケープ済み**: 文字列の子要素や属性値は自動的に HTML エスケープされます。どうしてもプレーン HTML を差し込みたい場合は `H.raw()` で opt-out し、`H.strict_validation` を `True` のままにしておけば void タグへの子要素や不正な Literal が即座に検出されます。
+- **デフォルトでエスケープ済み**: 文字列の子要素や属性値は自動的に HTML エスケープされます。どうしてもプレーン HTML を差し込みたい場合は `H.RAW_STR()` で opt-out し、`H.strict_validation` を `True` のままにしておけば void タグへの子要素や不正な Literal が即座に検出されます。
 
 ## 使い方
 ```python
@@ -63,7 +63,7 @@ button("invalid")   # mypy でエラー: Literal["button","submit"] に含まれ
 - `dict_`: `tag`/`props`/`children` を含む JSON 化しやすい辞書を返します。クライアントに渡したり、Pydantic モデルへ流し込むケースに使えます。
 
 ### エスケープとバリデーション
-- 文字列ノードと属性値はすべて自動で `html.escape` されます。プレエスケープ済みの断片を挿入したい場合は `H.raw("<span>safe</span>")` のように明示してください。
+- 文字列ノードと属性値はすべて自動で `html.escape` されます。プレエスケープ済みの断片を挿入したい場合は `H.RAW_STR("<span>safe</span>")` のように明示してください。
 - 実行時バリデーション（`H.strict_validation = True` が既定）により、void タグへ子要素を渡したり、Literal/boolean 制約に違反すると `ValueError`/`TypeError` が発生します。警告ログだけで続行したい場合は `False` に切り替えられます。検証はノード生成時に行われるので、`to_token()` や `HResponse` でストリーミングしても途中で壊れた HTML が流れることはありません。
 
 ### `dict_` を通じて JavaScript で描画する例

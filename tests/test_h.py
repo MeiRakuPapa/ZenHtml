@@ -1,11 +1,14 @@
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
+# mypy: disable-error-code=arg-type
+# mypy: disable-error-code=index
+# mypy: disable-error-code=misc
+# mypy: disable-error-code=list-item
 
 from datetime import datetime, time
 
 import pytest
 
-from zen_html import raw
-from zen_html.h import H
+from zen_html import H
 
 
 def test_button_renders_with_literal_and_bool_props() -> None:
@@ -91,7 +94,7 @@ def test_class_attribute_accepts_iterable() -> None:
 
 def test_class_attribute_rejects_non_string_items() -> None:
     with pytest.raises(TypeError):
-        H.div(class_=["foo", 1])  # type: ignore[list-item]
+        H.div(class_=["foo", 1])
 
 
 def test_children_keyword_argument() -> None:
@@ -140,7 +143,7 @@ def test_literal_restrictions_are_enforced() -> None:
 
 def test_bool_restrictions_require_bool() -> None:
     with pytest.raises(TypeError):
-        H.button("x", disabled="yes")  # type: ignore[arg-type]
+        H.button("x", disabled="yes")
 
 
 def test_text_and_attribute_values_are_escaped() -> None:
@@ -151,7 +154,7 @@ def test_text_and_attribute_values_are_escaped() -> None:
 
 
 def test_raw_helper_inserts_unescaped_html() -> None:
-    node = H.div(raw("<span>safe</span>"))
+    node = H.div(H.RAW_STR("<span>safe</span>"))
     assert node.html_.startswith("<div>")
     assert "<span>safe</span>" in node.html_
 
@@ -164,7 +167,7 @@ def test_pretty_dict_escapes_strings() -> None:
 
 
 def test_pretty_dict_escapes_raw_children() -> None:
-    node = H.div(raw("<span>safe</span>"))
+    node = H.div(H.RAW_STR("<span>safe</span>"))
     output = node._pretty_dict()
     assert "&lt;span&gt;" in output
 
@@ -176,7 +179,7 @@ def test_dict_property_escapes_plain_strings() -> None:
 
 
 def test_dict_property_preserves_raw_children() -> None:
-    node = H.div(raw("<span>aa</span>"))
+    node = H.div(H.RAW_STR("<span>aa</span>"))
     data = node.dict_
     assert data["children"][0] == "<span>aa</span>"
 

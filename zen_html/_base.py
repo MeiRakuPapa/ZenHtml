@@ -1,3 +1,18 @@
+"""
+_base.py
+
+This module provides the core functionality for rendering HTML elements in a structured and type-safe manner.
+It defines the base class `_HBase` for HTML nodes, utility functions for attribute normalization, and constants
+for HTML tag specifications.
+
+Classes:
+    _HBase: Represents an HTML node with children, attributes, and rendering capabilities.
+
+Functions:
+    html_tag: A decorator for defining HTML tag helper methods.
+    raw: Wraps pre-escaped HTML to bypass auto-escaping.
+"""
+
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
 
 from __future__ import annotations
@@ -6,6 +21,7 @@ import logging
 import re
 from datetime import date, datetime, time
 from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar, TypedDict, cast
+import warnings
 
 from ._tag_spec import normalized_tag_spec
 
@@ -35,17 +51,7 @@ PROP_NAME_MAP: dict[str, str] = {
 R_PROP_NAME_MAP = {v: k for k, v in PROP_NAME_MAP.items()}
 
 
-class _RawHTML(str):
-    """Marker type representing intentionally unescaped HTML fragments."""
-
-
-def raw(value: str) -> _RawHTML:
-    """Wrap pre-escaped HTML so it bypasses auto-escaping."""
-    if not isinstance(value, str):
-        raise TypeError("raw() expects str input")
-    return _RawHTML(value)
-
-
+# Ensure PropVal and related constants are defined
 ClassAttr = str | Iterable[str] | None
 PropVal = str | int | bool | float | date | datetime | time | dict[str, object] | None
 
@@ -64,7 +70,7 @@ def _build_tag_rules() -> dict[str, _TagRule]:
     rules: dict[str, _TagRule] = {}
     for tag, props in normalized_tag_spec().items():
         bools = {name for name, opt in props if opt.get("kind") == "bool"}
-        choices = {name: opt["values"] for name, opt in props if opt.get("kind") == "choices"}
+        choices = {name: opt.get("values", []) for name, opt in props if opt.get("kind") == "choices"}
         required = {name for name, opt in props if opt.get("required")}
         rules[tag] = {
             "bools": bools,
@@ -78,6 +84,31 @@ _TAG_RULES: dict[str, _TagRule] = _build_tag_rules()
 
 
 class _HBase:
+    """
+    Represents an HTML node with attributes, children, and rendering capabilities.
+
+    Attributes:
+        strict_validation (ClassVar[bool]): If True, raises exceptions for invalid attributes or children.
+        logger (ClassVar[logging.Logger]): Logger for validation warnings.
+
+    Methods:
+        to_token: Generates HTML tokens for the node.
+        html_: Returns the HTML string representation of the node.
+        dict_: Returns a dictionary representation of the node.
+    """
+
+    class RAW_STR(str):
+        """Marker type representing intentionally unescaped HTML fragments.
+        This class is used to wrap raw HTML strings that should bypass
+        automatic escaping. Use with caution, as improper use may lead
+        to security vulnerabilities (e.g., XSS attacks).
+        """
+
+        def __init__(self, value: str) -> None:
+            if not isinstance(value, str):
+                raise TypeError("RAW_STR value must be a string")
+            super().__init__()
+
     strict_validation: ClassVar[bool] = True
     logger: ClassVar[logging.Logger] = logging.getLogger("H")
 
@@ -193,7 +224,7 @@ class _HBase:
     def _flatten_children(cls, children: Iterable[Children]) -> Iterable[Child]:
         for c in children:
             match c:
-                case _RawHTML():
+                case _HBase.RAW_STR():
                     yield c
                 case str():
                     yield c
@@ -210,14 +241,14 @@ class _HBase:
             if v is True:
                 yield f" {k}"
             else:
-                escaped = v if isinstance(v, _RawHTML) else _escape_attr(str(v))
+                escaped = v if isinstance(v, _HBase.RAW_STR) else _escape_attr(str(v))
                 yield f" {k}='{escaped}'"
         if self._tag in VOID_TAGS:
             yield "/>"
             return
         yield ">"
         for child in self._children:
-            if isinstance(child, _RawHTML):
+            if isinstance(child, _HBase.RAW_STR):
                 yield str(child)
             elif isinstance(child, str):
                 yield _escape_text(child)
@@ -253,7 +284,7 @@ class _HBase:
             if v is True:
                 parts.append(f" {k}")
             else:
-                escaped = v if isinstance(v, _RawHTML) else _escape_attr(str(v))
+                escaped = v if isinstance(v, _HBase.RAW_STR) else _escape_attr(str(v))
                 parts.append(f" {k}='{escaped}'")
         attrs = "".join(parts)
         if self._tag in VOID_TAGS:
@@ -261,7 +292,7 @@ class _HBase:
 
         inner_parts = []
         for c in self._children:
-            if isinstance(c, _RawHTML):
+            if isinstance(c, _HBase.RAW_STR):
                 inner_parts.append("  " * (indent + 1) + str(c))
             elif isinstance(c, str):
                 inner_parts.append("  " * (indent + 1) + _escape_text(c))
@@ -294,7 +325,7 @@ class _HBase:
 
         lines.append(f"{pad2}'children': [")
         for c in self._children:
-            if isinstance(c, (_RawHTML, str)):
+            if isinstance(c, (_HBase.RAW_STR, str)):
                 lines.append(f"{pad3}  {_escape_text(str(c))!r},")
             else:
                 lines.append(c._pretty_dict(indent + 2))
@@ -304,7 +335,7 @@ class _HBase:
         return "\n".join(lines)
 
 
-Child = _HBase | str | _RawHTML
+Child = _HBase | str | _HBase.RAW_STR
 Children = Child | Iterable[Child]
 
 
@@ -313,6 +344,15 @@ _S = TypeVar("_S", bound=_HBase)
 
 
 def html_tag(fn: Callable[_P, _S]) -> Callable[_P, _S]:
+    """
+    A decorator for defining HTML tag helper methods.
+
+    Args:
+        fn (Callable): The function to wrap as a tag helper.
+
+    Returns:
+        Callable: The wrapped function as a class method.
+    """
     name = fn.__name__
 
     def wrapper(
@@ -387,7 +427,7 @@ def _escape_attr(value: str) -> str:
 
 
 def _repr_prop_value(value: str | bool) -> str:
-    if isinstance(value, (_RawHTML, str)):
+    if isinstance(value, (_HBase.RAW_STR, str)):
         return repr(_escape_attr(str(value)))
     return repr(value)
 
@@ -395,12 +435,34 @@ def _repr_prop_value(value: str | bool) -> str:
 def _serialize_child(child: Child) -> object:
     if isinstance(child, _HBase):
         return child.dict_
-    if isinstance(child, _RawHTML):
+    if isinstance(child, _HBase.RAW_STR):
         return str(child)
     return _escape_text(child)
 
 
 def _serialize_prop_value(value: str | bool) -> object:
-    if isinstance(value, (_RawHTML, str)):
+    if isinstance(value, (_HBase.RAW_STR, str)):
         return _escape_attr(str(value))
     return value
+
+
+def raw(value: str) -> _HBase.RAW_STR:
+    """
+    Wrap pre-escaped HTML so it bypasses auto-escaping.
+
+    .. deprecated::
+       This function is deprecated and will be removed in a future version.
+       Use `_HBase.RAW_STR` directly instead.
+
+    Args:
+        value (str): The raw HTML string.
+
+    Returns:
+        _HBase.RAW_STR: A marker type for raw HTML.
+    """
+    warnings.warn(
+        "raw() is deprecated and will be removed in a future version. Use _HBase.RawText directly instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _HBase.RAW_STR(value)

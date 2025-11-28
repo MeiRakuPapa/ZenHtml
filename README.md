@@ -22,7 +22,7 @@ pip install zenhtml
 - **Convenient helpers**: `dataset` dict → `data-*`, `style` dict → CSS strings, and `pretty_html`/`pretty_dict` for debugging.
 - **Reusable tokens**: `to_token()`, `html_`, and `dict_` can be used for streaming or structured rendering.
 - **HTML5 coverage**: 110+ tags (metadata, forms, tables, interactive elements…) are generated from `_tag_spec.py`. SVG/MathML are intentionally out of scope, helping keep the library compact and focused.
-- **Escaped by default**: Text children/attribute values are HTML-escaped automatically. Wrap trusted fragments with `H.raw()` when you really need unescaped output, and keep `H.strict_validation` enabled to fail fast on invalid props/void-tag children.
+- **Escaped by default**: Text children/attribute values are HTML-escaped automatically. Wrap trusted fragments with `H.RAW_STR()` when you really need unescaped output, and keep `H.strict_validation` enabled to fail fast on invalid props/void-tag children.
 
 ## Usage
 ```python
@@ -64,7 +64,7 @@ button("invalid")   # mypy error thanks to Literal
 - `dict_`: JSON-serializable tree containing `tag`, escaped `props`, and `children`. Useful for client-side rendering or feeding into other serializers.
 
 ### Escaping & validation
-- All text nodes and attribute values are escaped automatically. If you need to inject a pre-escaped fragment, wrap it with `H.raw("<span>safe</span>")`.
+- All text nodes and attribute values are escaped automatically. If you need to inject a pre-escaped fragment, wrap it with `H.RAW_STR("<span>safe</span>")`.
 - Runtime validation is enabled by default (`H.strict_validation = True`) and raises when you pass children to void tags or supply unsupported Literal/bool values. Set it to `False` when you prefer warnings and best-effort rendering. Validation occurs during node construction, so token streaming (`to_token()` / `HResponse`) never yields partial or invalid HTML—errors surface up front.
 
 ### Rendering via `dict_` in JavaScript

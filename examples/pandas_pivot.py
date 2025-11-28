@@ -1,5 +1,13 @@
 """Example: render a pandas pivot table as HTML using H."""
 
+# Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
+# mypy: disable-error-code=unused-ignore
+# mypy: disable-error-code=import-not-found
+# mypy: disable-error-code=valid-type
+# mypy: disable-error-code=unreachable
+# mypy: disable-error-code=func-returns-value
+# mypy: disable-error-code=union-attr
+
 from __future__ import annotations
 
 from typing import Iterable, Sequence
@@ -29,8 +37,7 @@ def pivot_table_html(
     )
 
     column_labels: Iterable[str] = (
-        (" / ".join(map(str, col)) if isinstance(col, tuple) else str(col))
-        for col in pivot.columns
+        (" / ".join(map(str, col)) if isinstance(col, tuple) else str(col)) for col in pivot.columns
     )
 
     header = H.thead(
@@ -42,7 +49,7 @@ def pivot_table_html(
 
     def render_cell(value: object) -> str:
         if callable(format_cell):
-            return format_cell(value)  # type: ignore[misc]
+            return format_cell(value)
         return format_cell.format(value)
 
     body_rows = []

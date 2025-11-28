@@ -7,7 +7,6 @@ from ._base import Children, ClassAttr, PropVal, _HBase, html_tag
 
 
 class H(_HBase):
-
     @html_tag
     def html(
         *_children: Children,

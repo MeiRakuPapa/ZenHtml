@@ -1,4 +1,6 @@
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
+# mypy: disable-error-code=no-untyped-def
+# mypy: disable-error-code=unused-ignore
 
 from typing import Iterable, Sequence
 
@@ -12,24 +14,21 @@ def select(name: str, label: str, item_map: dict[str, str], values: list[str]) -
     return H.div(
         H.label(label, class_="form-label m-0"),
         H.select(
-            *(
-                H.option(v, value=k, selected=True if k in values else None)
-                for k, v in item_map.items()
-            ),
+            *(H.option(v, value=k, selected=True if k in values else None) for k, v in item_map.items()),
             name=name,
             class_="dl",
             multiple=True,
-            size=8
+            size=8,
         ),
         dataName=name,
-        class_="mb-1"
+        class_="mb-1",
     )
 
 
 HtmlContent = H | Iterable[str]
 
 
-class HResponse(StreamingResponse):
+class HResponse(StreamingResponse):  # type: ignore[misc]
     """StreamResponse that renders `H` nodes or raw HTML token iterables."""
 
     def __init__(
@@ -57,33 +56,33 @@ class HResponse(StreamingResponse):
 
 
 def HtmlDocument(
-        *,
-        title: str,
-        description: str = "", 
-        keywords: str = "",
-        head: Sequence[H] | None = None,
-        body: Sequence[H] | None = None,
-        css: Sequence[str | URL] | None = None,
-        script: Sequence[str | URL] | None = None,
-        lang: str = "ja",
-    ) -> H:
-        head_nodes = list(head or ())
-        body_nodes = list(body or ())
-        css_nodes = [str(i) for i in css or ()]
-        script_nodes = [str(i) for i in script or ()]
-        return H.html(
-            H.head(
-                H.meta(charset="utf-8"),
-                H.meta(name="viewport", content="width=device-width, initial-scale=1"),
-                H.meta(name="description", content=description),
-                H.meta(name="keywords", content=keywords),
-                H.meta(httpEquiv="Pragma", content="no-cache"),
-                H.meta(httpEquiv="Cache-Control", content="no-store"),
-                H.title(title),
-                *(H.link(href=href, rel="stylesheet") for href in css_nodes),
-                *(H.script(src=src) for src in script_nodes),
-                *head_nodes,
-            ),
-            H.body(*body_nodes),
-            lang=lang,
-        )
+    *,
+    title: str,
+    description: str = "",
+    keywords: str = "",
+    head: Sequence[H] | None = None,
+    body: Sequence[H] | None = None,
+    css: Sequence[str | URL] | None = None,
+    script: Sequence[str | URL] | None = None,
+    lang: str = "ja",
+) -> H:
+    head_nodes = list(head or ())
+    body_nodes = list(body or ())
+    css_nodes = [str(i) for i in css or ()]
+    script_nodes = [str(i) for i in script or ()]
+    return H.html(
+        H.head(
+            H.meta(charset="utf-8"),
+            H.meta(name="viewport", content="width=device-width, initial-scale=1"),
+            H.meta(name="description", content=description),
+            H.meta(name="keywords", content=keywords),
+            H.meta(httpEquiv="Pragma", content="no-cache"),
+            H.meta(httpEquiv="Cache-Control", content="no-store"),
+            H.title(title),
+            *(H.link(href=href, rel="stylesheet") for href in css_nodes),
+            *(H.script(src=src) for src in script_nodes),
+            *head_nodes,
+        ),
+        H.body(*body_nodes),
+        lang=lang,
+    )

@@ -1,22 +1,27 @@
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
+# mypy: disable-error-code=arg-type
+# mypy: disable-error-code=no-untyped-def
+# mypy: disable-error-code=unused-ignore
 
 import pytest
 
-pytest.importorskip("starlette.responses")
 from starlette.testclient import TestClient
 
 from zen_html.h import H
 from examples.sample import HResponse, HtmlDocument
 
 
+pytest.importorskip("starlette.responses")
+
+
 def collect_body(response: HResponse) -> bytes:
-    async def app(scope, receive, send):  # type: ignore[no-redef]
+    async def app(scope, receive, send):
         assert scope["type"] == "http"
         await response(scope, receive, send)
 
     client = TestClient(app)
     res = client.get("/")
-    return res.content
+    return res.content  # type: ignore[no-any-return]
 
 
 def test_hresponse_from_tree() -> None:
