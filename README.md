@@ -96,7 +96,7 @@ PY
 ```
 
 ## Development notes
-- Tooling (Black/Isort/djlint) is configured in `pyproject.toml`.
+- Tooling (Ruff/djlint) is configured in `pyproject.toml`.
 - Boolean props render only when `True`; `False`/`None` are ignored.
 - `dataset={"fooBar": "baz"}` → `data-foo-bar="baz"`; `style={"fontSize": "12px"}` → `font-size: 12px`.
 - Requires Python 3.10+ so ParamSpec-based decorators keep IDE (VS Code) completions accurate.

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+### Added
+- Added `py.typed` file to properly support type checking.
+- Enabled Ruff for linting and formatting (replacing Black, isort, flake8).
+- Moved development dependencies to `dependency-groups.dev` instead of `optional-dependencies`.
+
 ## 0.1.4 - 2025-11-28
 ### Added
 - Support for `H.RAW_STR` to handle unescaped HTML fragments.

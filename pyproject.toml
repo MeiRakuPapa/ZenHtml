@@ -14,12 +14,10 @@ dependencies = []
 [project.urls]
 Homepage = "https://github.com/MeiRakuPapa/ZenHtml"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "autopep8",
-    "black",
+    "ruff",
     "debugpy",
-    "flake8",
     "pytest",
     "mypy",
     "mypy-extensions",
@@ -34,11 +32,22 @@ dev = [
     "build"
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 110
 
-[tool.isort]
-profile = "black"
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "C",    # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+]
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2
 
 [tool.mypy]
 plugins = ["pydantic.mypy"]
