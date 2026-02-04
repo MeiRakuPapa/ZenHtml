@@ -2,8 +2,8 @@
 _base.py
 
 This module provides the core functionality for rendering HTML elements in a structured and type-safe manner.
-It defines the base class `_HBase` for HTML nodes, utility functions for attribute normalization, and constants
-for HTML tag specifications.
+It defines the base class `_HBase` for HTML nodes, utility functions for attribute normalization,
+and constants for HTML tag specifications.
 
 Classes:
     _HBase: Represents an HTML node with children, attributes, and rendering capabilities.
@@ -136,28 +136,12 @@ class _HBase:
         elif "class" in props and props["class"] is not None:
             props["class"] = _normalize_class_attr(props["class"])
         dataset = props.pop("dataset", None)
-        match dataset:
-            case None:
-                pass
-            case dict():
-                for dk, dv in dataset.items():
-                    key = f"data-{_to_html_prop_name(dk)}"
-                    props[key] = _to_dataset_value(dv)
-            case _:
-                raise ValueError(f"dataset must be dict: {type(dataset)}")
+        if dataset is not None:
+            props.update(_normalize_dataset(dataset))
 
         style = props.pop("style", None)
-        match style:
-            case None:
-                pass
-            case dict():
-                props["style"] = "; ".join(
-                    f"{_to_html_prop_name(k)}: {v}" for k, v in style.items() if v is not None
-                )
-            case str():
-                props["style"] = style
-            case _:
-                raise ValueError("style must be dict or str:", {type(style)})
+        if style is not None:
+            props["style"] = _normalize_style_prop(style)
 
         props = self._validate_constraints(props)
 
@@ -179,8 +163,8 @@ class _HBase:
         checked = dict(props)
         provided: set[str] = set()
         if self._tag in VOID_TAGS and self._children:
-            if self._handle_violation(ValueError(f"Void element <{self._tag}> cannot have children")):
-                self._children = ()
+            self._handle_violation(ValueError(f"Void element <{self._tag}> cannot have children"))
+            self._children = ()
 
         for pk, pv in list(checked.items()):
             if pv is None:
@@ -190,23 +174,19 @@ class _HBase:
             allowed = spec["choices"].get(html_name)
             if allowed:
                 if not isinstance(pv, str):
-                    if self._handle_violation(
-                        TypeError(f"Attribute '{html_name}' on <{self._tag}> must be str")
-                    ):
-                        checked.pop(pk, None)
+                    self._handle_violation(TypeError(f"Attribute '{html_name}' on <{self._tag}> must be str"))
+                    checked.pop(pk, None)
                     continue
                 if pv not in allowed:
-                    if self._handle_violation(
+                    self._handle_violation(
                         ValueError(
                             f"Attribute '{html_name}' on <{self._tag}> must be one of {allowed}: {pv!r}"
                         )
-                    ):
-                        checked.pop(pk, None)
-            if html_name in spec["bools"] and not isinstance(pv, bool):
-                if self._handle_violation(
-                    TypeError(f"Attribute '{html_name}' on <{self._tag}> must be bool")
-                ):
+                    )
                     checked.pop(pk, None)
+            if html_name in spec["bools"] and not isinstance(pv, bool):
+                self._handle_violation(TypeError(f"Attribute '{html_name}' on <{self._tag}> must be bool"))
+                checked.pop(pk, None)
 
         missing = spec["required"] - provided
         if missing:
@@ -419,6 +399,58 @@ def _normalize_class_attr(value: object) -> str:
                 classes.append(token)
         return " ".join(classes)
     raise TypeError("class_ must be str or iterable of str values")
+
+
+def _normalize_dataset(dataset: PropVal) -> dict[str, str]:
+    """
+    Normalize dataset properties by converting them to data-* attributes.
+
+    Args:
+        dataset: The dataset to normalize. Must be a dict.
+
+    Returns:
+        A dictionary of data-* attributes.
+
+    Raises:
+        ValueError: If dataset is not a dict.
+    """
+    match dataset:
+        case None:
+            return {}
+        case dict():
+            result: dict[str, str] = {}
+            for dk, dv in dataset.items():
+                key = f"data-{_to_html_prop_name(dk)}"
+                result[key] = _to_dataset_value(dv)
+            return result
+        case _:
+            raise ValueError(f"dataset must be dict: {type(dataset)}")
+
+
+def _normalize_style_prop(style: PropVal) -> str:
+    """
+    Normalize style properties by converting them to a CSS string.
+
+    Args:
+        style: The style to normalize. Can be a dict or str.
+
+    Returns:
+        A CSS style string.
+
+    Raises:
+        ValueError: If style is not a dict or str.
+    """
+    match style:
+        case None:
+            return ""
+        case dict():
+            return "; ".join(
+                f"{_to_html_prop_name(k)}: {v}" for k, v in style.items() if v is not None
+            )
+        case str():
+            return style
+        case _:
+            raise ValueError("style must be dict or str:", {type(style)})
 
 
 def _escape_text(value: str) -> str:
