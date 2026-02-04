@@ -3,6 +3,7 @@
 # mypy: disable-error-code=empty-body
 # mypy: disable-error-code=misc
 from typing import Literal
+
 from ._base import Children, ClassAttr, PropVal, _HBase, html_tag
 
 

@@ -16,14 +16,17 @@ Functions:
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
 
 from __future__ import annotations
+
 import html
 import logging
 import re
-from datetime import date, datetime, time
-from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar, TypedDict, cast
 import warnings
+from collections.abc import Callable, Iterable
+from datetime import date, datetime, time
+from typing import ClassVar, ParamSpec, TypedDict, TypeVar, cast
 
 from ._tag_spec import normalized_tag_spec
+
 
 VOID_TAGS: set[str] = {
     "area",
