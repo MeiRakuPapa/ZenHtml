@@ -16,12 +16,13 @@ Functions:
 # Copyright (c) 2025 Yusuke KITAGAWA (tonosama_kaeru@icloud.com)
 
 from __future__ import annotations
+
 import html
 import logging
 import re
-from datetime import date, datetime, time
-from typing import Callable, ClassVar, Iterable, ParamSpec, TypeVar, TypedDict, cast
 import warnings
+from datetime import date, datetime, time
+from typing import Callable, ClassVar, Iterable, ParamSpec, TypedDict, TypeVar, cast
 
 from ._tag_spec import normalized_tag_spec
 
@@ -325,7 +326,9 @@ class _HBase:
 
         lines.append(f"{pad2}'children': [")
         for c in self._children:
-            if isinstance(c, (_HBase.RAW_STR, str)):
+            if isinstance(c, _HBase.RAW_STR):
+                lines.append(f"{pad3}  {str(c)!r},")
+            elif isinstance(c, str):
                 lines.append(f"{pad3}  {_escape_text(str(c))!r},")
             else:
                 lines.append(c._pretty_dict(indent + 2))
@@ -389,6 +392,8 @@ def _to_html_value(v: PropVal | object) -> str | bool:
         return v.isoformat(timespec="seconds")
     if isinstance(v, bool):
         return v
+    if isinstance(v, _HBase.RAW_STR):
+        return v
     return str(v)
 
 
@@ -440,8 +445,10 @@ def _serialize_child(child: Child) -> object:
     return _escape_text(child)
 
 
-def _serialize_prop_value(value: str | bool) -> object:
-    if isinstance(value, (_HBase.RAW_STR, str)):
+def _serialize_prop_value(value: str | _HBase.RAW_STR | bool) -> object:
+    if isinstance(value, _HBase.RAW_STR):
+        return str(value)
+    if isinstance(value, str):
         return _escape_attr(str(value))
     return value
 
@@ -461,7 +468,7 @@ def raw(value: str) -> _HBase.RAW_STR:
         _HBase.RAW_STR: A marker type for raw HTML.
     """
     warnings.warn(
-        "raw() is deprecated and will be removed in a future version. Use _HBase.RawText directly instead.",
+        "raw() is deprecated and will be removed in a future version. Use _HBase.RAW_STR directly instead.",
         DeprecationWarning,
         stacklevel=2,
     )
